@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AliChat - Web</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #chat-container {
+            width: 400px;
+            height: 600px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #header {
+            background: #007bff;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+        #messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            border-bottom: 1px solid #ddd;
+        }
+        .message {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        #input-area {
+            display: flex;
+            padding: 10px;
+            background: #fff;
+        }
+        #message-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+        }
+        #send-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-left: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #send-btn:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+
+<div id="chat-container">
+    <div id="header">💬 AliChat Web</div>
+    <div id="messages"></div>
+    <div id="input-area">
+        <input type="text" id="message-input" placeholder="Mesajınızı yazın..." autocomplete="off">
+        <button id="send-btn">Gönder</button>
+    </div>
+</div>
+
+<script>
+    // Kullanıcıdan isim al (İsim girilene kadar döngüde kalır)
+    let nickname = "";
+    while (!nickname.trim()) {
+        nickname = prompt("AliChat için lütfen bir kullanıcı adı girin:");
+    }
+
+    // Sunucuya bağlan
+    const socket = io();
+
+    const messagesDiv = document.getElementById('messages');
+    const messageInput = document.getElementById('message-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    // Sunucudan yeni mesaj geldiğinde ekrana ekle
+    socket.on('message', function(msg) {
+        const item = document.createElement('div');
+        item.classList.add('message');
+        item.textContent = msg;
+        messagesDiv.appendChild(item);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight; // Otomatik aşağı kaydır
+    });
+
+    // Mesaj gönderme fonksiyonu
+    function sendMessage() {
+        const text = messageInput.value.strip ? messageInput.value.strip() : messageInput.value.trim();
+        if (text !== "") {
+            const fullMessage = nickname + ": " + text;
+            socket.send(fullMessage); // Sunucuya gönder
+            messageInput.value = '';  // Kutuyu temizle
+        }
+    }
+
+    // Butona tıklayınca gönder
+    sendBtn.addEventListener('click', sendMessage);
+
+    // Enter tuşuna basınca gönder
+    messageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            sendMessage();
+        }
+    });
+</script>
+
+</body>
+</html>
