@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AliChat - Modern Voice</title>
+    <title>AliChat - Modern Reply</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,7 +47,8 @@
             flex-direction: column;
             gap: 12px;
         }
-        .message-row { display: flex; align-items: flex-end; gap: 10px; max-width: 80%; }
+        .message-row { display: flex; align-items: flex-end; gap: 10px; max-width: 80%; cursor: pointer; transition: transform 0.1s; }
+        .message-row:active { transform: scale(0.98); }
         .my-row { align-self: flex-end; flex-direction: row-reverse; }
         .other-row { align-self: flex-start; }
         
@@ -66,19 +67,52 @@
         .message-content { display: flex; flex-direction: column; }
         .my-row .message-content { align-items: flex-end; }
         .sender-name { font-size: 0.75rem; color: #64748b; margin-bottom: 3px; font-weight: 500; padding: 0 4px; }
-        .message-text { padding: 10px 14px; font-size: 0.95rem; line-height: 1.4; word-break: break-word; }
+        .message-text { padding: 10px 14px; font-size: 0.95rem; line-height: 1.4; word-break: break-word; position: relative; }
         
         .my-row .message-text { background: #0284c7; color: white; border-radius: 16px 16px 4px 16px; }
         .other-row .message-text { background: #f1f5f9; color: #334155; border-radius: 16px 16px 16px 4px; }
         
-        /* Ses mesajı için ses oynatıcı stili */
+        /* ↩️ Yanıt Kutusu Stili (Mesajın içinde görünen küçük alıntı) */
+        .reply-container {
+            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.06);
+            padding: 6px 10px;
+            border-left: 3px solid #0284c7;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            color: #475569;
+            max-width: 100%;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .my-row .reply-container {
+            border-left-color: #fff;
+            color: #e0f2fe;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
         audio { max-width: 100%; margin-top: 4px; border-radius: 8px; }
+
+        /* 📍 Giriş Alanının Üzerinde Çıkan Yanıt İptal Barı */
+        #reply-preview-bar {
+            background: #f1f5f9;
+            padding: 8px 16px;
+            border-top: 1px solid #e2e8f0;
+            display: none;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+            color: #475569;
+        }
+        #cancel-reply-btn {
+            background: none; border: none; color: #ef4444; font-weight: bold; cursor: pointer; font-size: 1rem;
+        }
 
         #input-area {
             display: flex;
             padding: 15px;
             background: #ffffff;
-            border-top: 1px solid #f1f5f9;
             gap: 8px;
             align-items: center;
         }
@@ -95,17 +129,10 @@
             background: #0284c7; color: white; border: none; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
         }
         
-        /* 🎤 Ses Kayıt Butonu Stili */
         #voice-btn {
-            background: #e2e8f0; color: #334155; border: none; padding: 12px 14px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.2s;
+            background: #e2e8f0; color: #334155; border: none; padding: 12px 14px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
         }
-        #voice-btn.recording { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.6; }
-            100% { opacity: 1; }
-        }
+        #voice-btn.recording { background: #ef4444; color: white; }
     </style>
 </head>
 <body>
@@ -115,7 +142,14 @@
         <span class="status-dot"></span>
         AliChat
     </div>
+    
     <div id="messages"></div>
+    
+    <div id="reply-preview-bar">
+        <span id="reply-preview-text">Yanıtlanıyor...</span>
+        <button id="cancel-reply-btn">✕</button>
+    </div>
+
     <div id="input-area">
         <button id="voice-btn">🎤</button>
         <input type="text" id="message-input" placeholder="Bir mesaj yazın..." autocomplete="off">
@@ -134,10 +168,17 @@
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
     const voiceBtn = document.getElementById('voice-btn');
+    const replyPreviewBar = document.getElementById('reply-preview-bar');
+    const replyPreviewText = document.getElementById('reply-preview-text');
+    const cancelReplyBtn = document.getElementById('cancel-reply-btn');
 
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
+
+    // Yanıt bilgilerini tutacak değişkenler
+    let selectedReplyText = "";
+    let selectedReplySender = "";
 
     const colors = ['#0f172a', '#2563eb', '#16a34a', '#db2777', '#ea580c', '#7c3aed', '#0891b2'];
     function getAvatarColor(name) {
@@ -146,8 +187,8 @@
         return colors[Math.abs(hash) % colors.length];
     }
 
-    // Ortak mesaj satırı oluşturma fonksiyonu
-    function createMessageRow(sender) {
+    // Ortak satır oluşturma ve Tıklanınca Yanıtlama Ayarı
+    function createMessageRow(sender, replyData) {
         const row = document.createElement('div');
         row.classList.add('message-row');
         if (sender === nickname.trim()) { row.classList.add('my-row'); } else { row.classList.add('other-row'); }
@@ -167,46 +208,81 @@
         content.appendChild(nameDiv);
         row.appendChild(avatar);
         row.appendChild(content);
-        messagesDiv.appendChild(row);
-        
-        return content; // İçeriği ekleyeceğimiz alanı döndürüyor
-    }
 
-    // Normal Yazılı Mesaj Alındığında
-    socket.on('message', function(data) {
-        const separatorIndex = data.indexOf(':');
-        let sender = "Sistem";
-        let text = data;
-
-        if (separatorIndex !== -1) {
-            sender = data.substring(0, separatorIndex).trim();
-            text = data.substring(separatorIndex + 1).trim();
+        // Eğer gelen mesajda bir yanıt varsa, bunu mesaj kutusunun üstüne ekle
+        if (replyData && replyData.text) {
+            const replyBox = document.createElement('div');
+            replyBox.classList.add('reply-container');
+            replyBox.textContent = `↩️ ${replyData.sender}: ${replyData.text}`;
+            content.appendChild(replyBox);
         }
 
-        const contentArea = createMessageRow(sender);
+        messagesDiv.appendChild(row);
+        return { contentArea: content, rowElement: row };
+    }
+
+    // Mesaja Tıklayınca Yanıt Modunu Aktif Etme Fonksiyonu
+    function setupReplyEvent(rowElement, sender, shortText) {
+        rowElement.addEventListener('click', function() {
+            selectedReplySender = sender;
+            selectedReplyText = shortText;
+            replyPreviewText.textContent = `↩️ ${sender} kullanıcısına yanıt veriliyor: "${shortText}"`;
+            replyPreviewBar.style.display = "flex";
+            messageInput.focus();
+        });
+    }
+
+    // Yanıtı İptal Etme
+    cancelReplyBtn.addEventListener('click', function() {
+        selectedReplySender = "";
+        selectedReplyText = "";
+        replyPreviewBar.style.display = "none";
+    });
+
+    // --- NORMAL MESAJ ALINDIĞINDA ---
+    socket.on('message', function(data) {
+        // data formatı: { sender: "Ali", text: "Selam", reply: { sender: "..", text: ".." } } veya eski string formatıysa uyumluluk:
+        let sender = "Sistem";
+        let text = data;
+        let reply = null;
+
+        if (typeof data === 'object') {
+            sender = data.sender;
+            text = data.text;
+            reply = data.reply;
+        } else {
+            const separatorIndex = data.indexOf(':');
+            if (separatorIndex !== -1) {
+                sender = data.substring(0, separatorIndex).trim();
+                text = data.substring(separatorIndex + 1).trim();
+            }
+        }
+
+        const build = createMessageRow(sender, reply);
         const textDiv = document.createElement('div');
         textDiv.classList.add('message-text');
         textDiv.textContent = text;
-        contentArea.appendChild(textDiv);
+        build.contentArea.appendChild(textDiv);
         
+        setupReplyEvent(build.rowElement, sender, text.length > 30 ? text.substring(0, 30) + "..." : text);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // 🎤 Sesli Mesaj Alındığında
+    // --- SESLİ MESAJ ALINDIĞINDA ---
     socket.on('audio_message', function(data) {
-        const contentArea = createMessageRow(data.sender);
+        const build = createMessageRow(data.sender, data.reply);
         
         const textDiv = document.createElement('div');
         textDiv.classList.add('message-text');
         
-        // Ses oynatıcı (Audio Player) oluşturuyoruz
         const audio = document.createElement('audio');
         audio.src = data.audio;
         audio.controls = true;
         
         textDiv.appendChild(audio);
-        contentArea.appendChild(textDiv);
+        build.contentArea.appendChild(textDiv);
         
+        setupReplyEvent(build.rowElement, data.sender, "🎵 Ses Kaydı");
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
@@ -214,8 +290,14 @@
     function sendMessage() {
         const text = messageInput.value.trim();
         if (text !== "") {
-            socket.send(nickname + ": " + text);
+            // Sunucuya obje olarak gönderiyoruz ki yanıt bilgisini de taşısın
+            socket.emit('message', {
+                sender: nickname,
+                text: text,
+                reply: selectedReplyText ? { sender: selectedReplySender, text: selectedReplyText } : null
+            });
             messageInput.value = '';
+            cancelReplyBtn.click(); // Yanıtı temizle
         }
     }
 
@@ -225,28 +307,25 @@
     // --- SES KAYIT MANTIĞI ---
     voiceBtn.addEventListener('click', async function() {
         if (!isRecording) {
-            // Mikrofon izni iste ve kayda başla
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                     mediaRecorder = new MediaRecorder(stream);
                     audioChunks = [];
 
-                    mediaRecorder.ondataavailable = function(e) {
-                        audioChunks.push(e.data);
-                    };
-
+                    mediaRecorder.ondataavailable = function(e) { audioChunks.push(e.data); };
                     mediaRecorder.onstop = function() {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
                         const reader = new FileReader();
                         reader.readAsDataURL(audioBlob); 
                         reader.onloadend = function() {
                             const base64Audio = reader.result;
-                            // Ses verisini sunucuya gönder
                             socket.emit('audio_message', {
                                 sender: nickname,
-                                audio: base64Audio
+                                audio: base64Audio,
+                                reply: selectedReplyText ? { sender: selectedReplySender, text: selectedReplyText } : null
                             });
+                            cancelReplyBtn.click();
                         }
                     };
 
@@ -254,16 +333,10 @@
                     isRecording = true;
                     voiceBtn.classList.add('recording');
                     voiceBtn.textContent = "🛑";
-                } catch (err) {
-                    alert("Mikrofon izni reddedildi veya cihaz bulunamadı.");
-                }
-            } else {
-                alert("Tarayıcınız ses kaydetmeyi desteklemiyor.");
-            }
+                } catch (err) { alert("Mikrofon izni reddedildi."); }
+            } else { alert("Tarayıcı desteklemiyor."); }
         } else {
-            // Kaydı durdur
             mediaRecorder.stop();
-            // Mikrofonu kapat
             mediaRecorder.stream.getTracks().forEach(track => track.stop());
             isRecording = false;
             voiceBtn.classList.remove('recording');
