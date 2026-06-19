@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AliChat - Güvenli Modern</title>
+    <title>AliChat - Modern Voice</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -25,7 +25,6 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            position: relative;
         }
         #header {
             background: #ffffff;
@@ -36,26 +35,9 @@
             border-bottom: 1px solid #f1f5f9;
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 10px;
         }
-        .header-left { display: flex; align-items: center; gap: 10px; }
         #header .status-dot { width: 9px; height: 9px; background: #10b981; border-radius: 50%; }
-        
-        /* 🚨 Şikayet Et Butonu */
-        #report-mode-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        #report-mode-btn:hover { background: #dc2626; }
-        #report-mode-btn.active { background: #1e293b; content: "İptal Et"; }
-
         #messages {
             flex: 1;
             padding: 20px;
@@ -65,24 +47,10 @@
             flex-direction: column;
             gap: 12px;
         }
-        .message-row {
-            display: flex;
-            align-items: flex-end;
-            gap: 10px;
-            max-width: 80%;
-            transition: all 0.2s;
-        }
+        .message-row { display: flex; align-items: flex-end; gap: 10px; max-width: 80%; }
         .my-row { align-self: flex-end; flex-direction: row-reverse; }
         .other-row { align-self: flex-start; }
         
-        /* Şikayet modunda seçilebilir mesajlar */
-        .selectable-message { cursor: pointer; }
-        .selectable-message:hover { transform: scale(1.02); }
-        .selected-for-report .message-text {
-            border: 2px solid #ef4444 !important;
-            box-shadow: 0 0 10px rgba(239, 68, 68, 0.3);
-        }
-
         .avatar {
             width: 32px;
             height: 32px;
@@ -103,16 +71,15 @@
         .my-row .message-text { background: #0284c7; color: white; border-radius: 16px 16px 4px 16px; }
         .other-row .message-text { background: #f1f5f9; color: #334155; border-radius: 16px 16px 16px 4px; }
         
-        #controls-area {
-            display: flex;
-            flex-direction: column;
-            background: #ffffff;
-            border-top: 1px solid #f1f5f9;
-        }
+        /* Ses mesajı için ses oynatıcı stili */
+        audio { max-width: 100%; margin-top: 4px; border-radius: 8px; }
+
         #input-area {
             display: flex;
             padding: 15px;
-            gap: 10px;
+            background: #ffffff;
+            border-top: 1px solid #f1f5f9;
+            gap: 8px;
             align-items: center;
         }
         #message-input {
@@ -125,44 +92,34 @@
             font-size: 0.95rem;
         }
         #send-btn {
-            background: #0284c7; color: white; border: none; padding: 12px 20px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
+            background: #0284c7; color: white; border: none; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
         }
         
-        /* 🚨 Şikayeti Gönder Butonu (Giriş alanının hemen altında yer alacak) */
-        #submit-report-btn {
-            background: #ef4444;
-            color: white;
-            border: none;
-            padding: 10px;
-            font-weight: bold;
-            cursor: pointer;
-            display: none; /* Varsayılan olarak gizli */
-            text-align: center;
-            font-size: 0.9rem;
-            border-top: 1px solid #fee2e2;
+        /* 🎤 Ses Kayıt Butonu Stili */
+        #voice-btn {
+            background: #e2e8f0; color: #334155; border: none; padding: 12px 14px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem; transition: all 0.2s;
         }
-        #submit-report-btn:hover { background: #dc2626; }
+        #voice-btn.recording { background: #ef4444; color: white; animation: pulse 1.5s infinite; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
     </style>
 </head>
 <body>
 
 <div id="chat-container">
     <div id="header">
-        <div class="header-left">
-            <span class="status-dot"></span>
-            <span>AliChat</span>
-        </div>
-        <button id="report-mode-btn">Şikayet Et</button>
+        <span class="status-dot"></span>
+        AliChat
     </div>
-    
     <div id="messages"></div>
-    
-    <div id="controls-area">
-        <div id="input-area">
-            <input type="text" id="message-input" placeholder="Bir mesaj yazın..." autocomplete="off">
-            <button id="send-btn">Gönder</button>
-        </div>
-        <button id="submit-report-btn">🚨 Şikayeti Gönder</button>
+    <div id="input-area">
+        <button id="voice-btn">🎤</button>
+        <input type="text" id="message-input" placeholder="Bir mesaj yazın..." autocomplete="off">
+        <button id="send-btn">Gönder</button>
     </div>
 </div>
 
@@ -173,43 +130,14 @@
     }
 
     const socket = io();
-    
-    // IP takibi için sunucuya ismi bildiriyoruz
-    socket.emit('register_ip', { nickname: nickname });
-
     const messagesDiv = document.getElementById('messages');
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
-    const reportModeBtn = document.getElementById('report-mode-btn');
-    const submitReportBtn = document.getElementById('submit-report-btn');
+    const voiceBtn = document.getElementById('voice-btn');
 
-    let isReportMode = false;
-    let selectedMessageText = "";
-
-    // Şikayet modunu açma / kapatma
-    reportModeBtn.addEventListener('click', function() {
-        isReportMode = !isReportMode;
-        if (isReportMode) {
-            reportModeBtn.textContent = "İptal Et";
-            reportModeBtn.classList.add('active');
-            document.querySelectorAll('.message-row').forEach(el => el.classList.add('selectable-message'));
-            alert("Şikayet etmek istediğiniz mesaja tıklayın, ardından alttaki 'Şikayeti Gönder' butonuna basın.");
-        } else {
-            resetReportMode();
-        }
-    });
-
-    // Reset fonksiyonu
-    function resetReportMode() {
-        isReportMode = false;
-        selectedMessageText = "";
-        reportModeBtn.textContent = "Şikayet Et";
-        reportModeBtn.classList.remove('active');
-        submitReportBtn.style.display = "none";
-        document.querySelectorAll('.message-row').forEach(el => {
-            el.classList.remove('selectable-message', 'selected-for-report');
-        });
-    }
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
 
     const colors = ['#0f172a', '#2563eb', '#16a34a', '#db2777', '#ea580c', '#7c3aed', '#0891b2'];
     function getAvatarColor(name) {
@@ -218,33 +146,11 @@
         return colors[Math.abs(hash) % colors.length];
     }
 
-    socket.on('message', function(data) {
-        const separatorIndex = data.indexOf(':');
-        let sender = "Sistem";
-        let text = data;
-
-        if (separatorIndex !== -1) {
-            sender = data.substring(0, separatorIndex).trim();
-            text = data.substring(separatorIndex + 1).trim();
-        }
-
+    // Ortak mesaj satırı oluşturma fonksiyonu
+    function createMessageRow(sender) {
         const row = document.createElement('div');
         row.classList.add('message-row');
-        row.setAttribute('data-full-text', data); // Şikayet için tam metni saklıyoruz
-
-        if (sender === nickname.trim()) { row.classList.add('my-row'); } 
-        else { row.classList.add('other-row'); }
-
-        if (isReportMode) { row.classList.add('selectable-message'); }
-
-        // Mesaj seçme olayı
-        row.addEventListener('click', function() {
-            if (!isReportMode) return;
-            document.querySelectorAll('.message-row').forEach(el => el.classList.remove('selected-for-report'));
-            row.classList.add('selected-for-report');
-            selectedMessageText = row.getAttribute('data-full-text');
-            submitReportBtn.style.display = "block"; // Alttaki butonu göster
-        });
+        if (sender === nickname.trim()) { row.classList.add('my-row'); } else { row.classList.add('other-row'); }
 
         const avatar = document.createElement('div');
         avatar.classList.add('avatar');
@@ -258,34 +164,53 @@
         nameDiv.classList.add('sender-name');
         nameDiv.textContent = sender;
 
-        const textDiv = document.createElement('div');
-        textDiv.classList.add('message-text');
-        textDiv.textContent = text;
-
         content.appendChild(nameDiv);
-        content.appendChild(textDiv);
         row.appendChild(avatar);
         row.appendChild(content);
         messagesDiv.appendChild(row);
+        
+        return content; // İçeriği ekleyeceğimiz alanı döndürüyor
+    }
+
+    // Normal Yazılı Mesaj Alındığında
+    socket.on('message', function(data) {
+        const separatorIndex = data.indexOf(':');
+        let sender = "Sistem";
+        let text = data;
+
+        if (separatorIndex !== -1) {
+            sender = data.substring(0, separatorIndex).trim();
+            text = data.substring(separatorIndex + 1).trim();
+        }
+
+        const contentArea = createMessageRow(sender);
+        const textDiv = document.createElement('div');
+        textDiv.classList.add('message-text');
+        textDiv.textContent = text;
+        contentArea.appendChild(textDiv);
+        
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // Şikayeti Sunucuya Gönder
-    submitReportBtn.addEventListener('click', function() {
-        if (!selectedMessageText) return;
-        socket.emit('submit_report', { text: selectedMessageText });
+    // 🎤 Sesli Mesaj Alındığında
+    socket.on('audio_message', function(data) {
+        const contentArea = createMessageRow(data.sender);
+        
+        const textDiv = document.createElement('div');
+        textDiv.classList.add('message-text');
+        
+        // Ses oynatıcı (Audio Player) oluşturuyoruz
+        const audio = document.createElement('audio');
+        audio.src = data.audio;
+        audio.controls = true;
+        
+        textDiv.appendChild(audio);
+        contentArea.appendChild(textDiv);
+        
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // Yapay zeka kontrol sonucu geldiğinde
-    socket.on('report_result', function(data) {
-        alert(data.message);
-        resetReportMode();
-        if (data.status === "banned") {
-            // Eğer engellenen kişi bizsek sayfayı yenileyip engeli devreye alıyoruz
-            location.reload();
-        }
-    });
-
+    // Metin Mesajı Gönderme
     function sendMessage() {
         const text = messageInput.value.trim();
         if (text !== "") {
@@ -296,6 +221,55 @@
 
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+
+    // --- SES KAYIT MANTIĞI ---
+    voiceBtn.addEventListener('click', async function() {
+        if (!isRecording) {
+            // Mikrofon izni iste ve kayda başla
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    mediaRecorder = new MediaRecorder(stream);
+                    audioChunks = [];
+
+                    mediaRecorder.ondataavailable = function(e) {
+                        audioChunks.push(e.data);
+                    };
+
+                    mediaRecorder.onstop = function() {
+                        const audioBlob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
+                        const reader = new FileReader();
+                        reader.readAsDataURL(audioBlob); 
+                        reader.onloadend = function() {
+                            const base64Audio = reader.result;
+                            // Ses verisini sunucuya gönder
+                            socket.emit('audio_message', {
+                                sender: nickname,
+                                audio: base64Audio
+                            });
+                        }
+                    };
+
+                    mediaRecorder.start();
+                    isRecording = true;
+                    voiceBtn.classList.add('recording');
+                    voiceBtn.textContent = "🛑";
+                } catch (err) {
+                    alert("Mikrofon izni reddedildi veya cihaz bulunamadı.");
+                }
+            } else {
+                alert("Tarayıcınız ses kaydetmeyi desteklemiyor.");
+            }
+        } else {
+            // Kaydı durdur
+            mediaRecorder.stop();
+            // Mikrofonu kapat
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            isRecording = false;
+            voiceBtn.classList.remove('recording');
+            voiceBtn.textContent = "🎤";
+        }
+    });
 </script>
 
 </body>
