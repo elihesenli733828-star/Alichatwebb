@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AliChat - Modern Reply</title>
+    <title>AliChat - Modern Media</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -72,67 +72,38 @@
         .my-row .message-text { background: #0284c7; color: white; border-radius: 16px 16px 4px 16px; }
         .other-row .message-text { background: #f1f5f9; color: #334155; border-radius: 16px 16px 16px 4px; }
         
-        /* ↩️ Yanıt Kutusu Stili (Mesajın içinde görünen küçük alıntı) */
         .reply-container {
-            font-size: 0.8rem;
-            background: rgba(0, 0, 0, 0.06);
-            padding: 6px 10px;
-            border-left: 3px solid #0284c7;
-            border-radius: 4px;
-            margin-bottom: 5px;
-            color: #475569;
-            max-width: 100%;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 0.8rem; background: rgba(0, 0, 0, 0.06); padding: 6px 10px; border-left: 3px solid #0284c7; border-radius: 4px; margin-bottom: 5px; color: #475569; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
         }
-        .my-row .reply-container {
-            border-left-color: #fff;
-            color: #e0f2fe;
-            background: rgba(255, 255, 255, 0.15);
-        }
+        .my-row .reply-container { border-left-color: #fff; color: #e0f2fe; background: rgba(255, 255, 255, 0.15); }
 
         audio { max-width: 100%; margin-top: 4px; border-radius: 8px; }
+        
+        /* 🖼️ Gönderilen Fotoğrafın Stili */
+        .chat-image { max-width: 100%; max-height: 200px; border-radius: 12px; margin-top: 4px; display: block; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
-        /* 📍 Giriş Alanının Üzerinde Çıkan Yanıt İptal Barı */
-        #reply-preview-bar {
-            background: #f1f5f9;
-            padding: 8px 16px;
-            border-top: 1px solid #e2e8f0;
-            display: none;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.85rem;
-            color: #475569;
-        }
-        #cancel-reply-btn {
-            background: none; border: none; color: #ef4444; font-weight: bold; cursor: pointer; font-size: 1rem;
-        }
+        #reply-preview-bar { background: #f1f5f9; padding: 8px 16px; border-top: 1px solid #e2e8f0; display: none; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #475569; }
+        #cancel-reply-btn { background: none; border: none; color: #ef4444; font-weight: bold; cursor: pointer; font-size: 1rem; }
 
         #input-area {
             display: flex;
             padding: 15px;
             background: #ffffff;
-            gap: 8px;
+            gap: 6px;
             align-items: center;
         }
         #message-input {
-            flex: 1;
-            padding: 12px 18px;
-            border: 1px solid #e2e8f0;
-            background: #f8fafc;
-            border-radius: 24px;
-            outline: none;
-            font-size: 0.95rem;
+            flex: 1; padding: 12px 18px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 24px; outline: none; font-size: 0.95rem;
         }
         #send-btn {
             background: #0284c7; color: white; border: none; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
         }
         
-        #voice-btn {
-            background: #e2e8f0; color: #334155; border: none; padding: 12px 14px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
+        #voice-btn, .file-label {
+            background: #e2e8f0; color: #334155; border: none; padding: 12px 13px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: center;
         }
         #voice-btn.recording { background: #ef4444; color: white; }
+        #image-input { display: none; } /* Gerçek dosya seçiciyi gizliyoruz */
     </style>
 </head>
 <body>
@@ -151,6 +122,9 @@
     </div>
 
     <div id="input-area">
+        <label for="image-input" class="file-label">🖼️</label>
+        <input type="file" id="image-input" accept="image/*">
+        
         <button id="voice-btn">🎤</button>
         <input type="text" id="message-input" placeholder="Bir mesaj yazın..." autocomplete="off">
         <button id="send-btn">Gönder</button>
@@ -168,6 +142,7 @@
     const messageInput = document.getElementById('message-input');
     const sendBtn = document.getElementById('send-btn');
     const voiceBtn = document.getElementById('voice-btn');
+    const imageInput = document.getElementById('image-input');
     const replyPreviewBar = document.getElementById('reply-preview-bar');
     const replyPreviewText = document.getElementById('reply-preview-text');
     const cancelReplyBtn = document.getElementById('cancel-reply-btn');
@@ -175,8 +150,6 @@
     let mediaRecorder;
     let audioChunks = [];
     let isRecording = false;
-
-    // Yanıt bilgilerini tutacak değişkenler
     let selectedReplyText = "";
     let selectedReplySender = "";
 
@@ -187,7 +160,6 @@
         return colors[Math.abs(hash) % colors.length];
     }
 
-    // Ortak satır oluşturma ve Tıklanınca Yanıtlama Ayarı
     function createMessageRow(sender, replyData) {
         const row = document.createElement('div');
         row.classList.add('message-row');
@@ -209,7 +181,6 @@
         row.appendChild(avatar);
         row.appendChild(content);
 
-        // Eğer gelen mesajda bir yanıt varsa, bunu mesaj kutusunun üstüne ekle
         if (replyData && replyData.text) {
             const replyBox = document.createElement('div');
             replyBox.classList.add('reply-container');
@@ -221,7 +192,6 @@
         return { contentArea: content, rowElement: row };
     }
 
-    // Mesaja Tıklayınca Yanıt Modunu Aktif Etme Fonksiyonu
     function setupReplyEvent(rowElement, sender, shortText) {
         rowElement.addEventListener('click', function() {
             selectedReplySender = sender;
@@ -232,32 +202,18 @@
         });
     }
 
-    // Yanıtı İptal Etme
     cancelReplyBtn.addEventListener('click', function() {
-        selectedReplySender = "";
-        selectedReplyText = "";
-        replyPreviewBar.style.display = "none";
+        selectedReplySender = ""; selectedReplyText = ""; replyPreviewBar.style.display = "none";
     });
 
-    // --- NORMAL MESAJ ALINDIĞINDA ---
+    // 1. NORMAL METİN MESAJI ALINDIĞINDA
     socket.on('message', function(data) {
-        // data formatı: { sender: "Ali", text: "Selam", reply: { sender: "..", text: ".." } } veya eski string formatıysa uyumluluk:
-        let sender = "Sistem";
-        let text = data;
-        let reply = null;
-
-        if (typeof data === 'object') {
-            sender = data.sender;
-            text = data.text;
-            reply = data.reply;
-        } else {
+        let sender = "Sistem", text = data, reply = null;
+        if (typeof data === 'object') { sender = data.sender; text = data.text; reply = data.reply; }
+        else {
             const separatorIndex = data.indexOf(':');
-            if (separatorIndex !== -1) {
-                sender = data.substring(0, separatorIndex).trim();
-                text = data.substring(separatorIndex + 1).trim();
-            }
+            if (separatorIndex !== -1) { sender = data.substring(0, separatorIndex).trim(); text = data.substring(separatorIndex + 1).trim(); }
         }
-
         const build = createMessageRow(sender, reply);
         const textDiv = document.createElement('div');
         textDiv.classList.add('message-text');
@@ -268,17 +224,13 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // --- SESLİ MESAJ ALINDIĞINDA ---
+    // 2. SESLİ MESAJ ALINDIĞINDA
     socket.on('audio_message', function(data) {
         const build = createMessageRow(data.sender, data.reply);
-        
         const textDiv = document.createElement('div');
         textDiv.classList.add('message-text');
-        
         const audio = document.createElement('audio');
-        audio.src = data.audio;
-        audio.controls = true;
-        
+        audio.src = data.audio; audio.controls = true;
         textDiv.appendChild(audio);
         build.contentArea.appendChild(textDiv);
         
@@ -286,23 +238,57 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // Metin Mesajı Gönderme
+    // 3. 🖼️ FOTOĞRAF MESAJI ALINDIĞINDA
+    socket.on('image_message', function(data) {
+        const build = createMessageRow(data.sender, data.reply);
+        const textDiv = document.createElement('div');
+        textDiv.classList.add('message-text');
+        
+        // Fotoğraf elementi oluşturuluyor
+        const img = document.createElement('img');
+        img.src = data.image;
+        img.classList.add('chat-image');
+        
+        textDiv.appendChild(img);
+        build.contentArea.appendChild(textDiv);
+        
+        setupReplyEvent(build.rowElement, data.sender, "🖼️ Fotoğraf");
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
     function sendMessage() {
         const text = messageInput.value.trim();
         if (text !== "") {
-            // Sunucuya obje olarak gönderiyoruz ki yanıt bilgisini de taşısın
             socket.emit('message', {
-                sender: nickname,
-                text: text,
+                sender: nickname, text: text,
                 reply: selectedReplyText ? { sender: selectedReplySender, text: selectedReplyText } : null
             });
-            messageInput.value = '';
-            cancelReplyBtn.click(); // Yanıtı temizle
+            messageInput.value = ''; cancelReplyBtn.click();
         }
     }
 
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
+
+    // --- 🖼️ FOTOĞRAF GÖNDERME MANTIĞI ---
+    imageInput.addEventListener('change', function() {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.readAsDataURL(file); // Fotoğrafı Base64 formatına çevirir
+            reader.onloadend = function() {
+                const base64Image = reader.result;
+                // Fotoğraf verisini sunucuya gönderiyoruz
+                socket.emit('image_message', {
+                    sender: nickname,
+                    image: base64Image,
+                    reply: selectedReplyText ? { sender: selectedReplySender, text: selectedReplyText } : null
+                });
+                cancelReplyBtn.click();
+            }
+            this.value = ""; // Aynı fotoğrafı tekrar seçebilmek için inputu sıfırla
+        }
+    });
 
     // --- SES KAYIT MANTIĞI ---
     voiceBtn.addEventListener('click', async function() {
@@ -310,37 +296,25 @@
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
                 try {
                     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                    mediaRecorder = new MediaRecorder(stream);
-                    audioChunks = [];
-
+                    mediaRecorder = new MediaRecorder(stream); audioChunks = [];
                     mediaRecorder.ondataavailable = function(e) { audioChunks.push(e.data); };
                     mediaRecorder.onstop = function() {
                         const audioBlob = new Blob(audioChunks, { type: 'audio/ogg; codecs=opus' });
-                        const reader = new FileReader();
-                        reader.readAsDataURL(audioBlob); 
+                        const reader = new FileReader(); reader.readAsDataURL(audioBlob); 
                         reader.onloadend = function() {
-                            const base64Audio = reader.result;
                             socket.emit('audio_message', {
-                                sender: nickname,
-                                audio: base64Audio,
+                                sender: nickname, audio: reader.result,
                                 reply: selectedReplyText ? { sender: selectedReplySender, text: selectedReplyText } : null
                             });
                             cancelReplyBtn.click();
                         }
                     };
-
-                    mediaRecorder.start();
-                    isRecording = true;
-                    voiceBtn.classList.add('recording');
-                    voiceBtn.textContent = "🛑";
+                    mediaRecorder.start(); isRecording = true; voiceBtn.classList.add('recording'); voiceBtn.textContent = "🛑";
                 } catch (err) { alert("Mikrofon izni reddedildi."); }
             } else { alert("Tarayıcı desteklemiyor."); }
         } else {
-            mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
-            isRecording = false;
-            voiceBtn.classList.remove('recording');
-            voiceBtn.textContent = "🎤";
+            mediaRecorder.stop(); mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            isRecording = false; voiceBtn.classList.remove('recording'); voiceBtn.textContent = "🎤";
         }
     });
 </script>
