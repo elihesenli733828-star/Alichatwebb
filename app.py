@@ -15,10 +15,14 @@ def index():
 def handle_message(msg):
     send(msg, broadcast=True)
 
-# Gelen ses kaydını alıp odadaki herkese (broadcast) iletiyoruz
 @socketio.on('audio_message')
 def handle_audio_message(data):
     emit('audio_message', data, broadcast=True)
+
+# Gelen fotoğraf mesajını alıp odadaki herkese (broadcast) iletiyoruz
+@socketio.on('image_message')
+def handle_image_message(data):
+    emit('image_message', data, broadcast=True)
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 5000))
