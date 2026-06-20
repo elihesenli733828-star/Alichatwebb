@@ -7,26 +7,29 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'alichat_gizli_anahtar'
 
-# Senin orijinal sistemindeki gibi eventlet moduna geri dönüyoruz (Daha kararlıdır)
-socketio = SocketIO(app, cors_allowed_origins="*", async_mode='eventlet')
+# Render'ın beklediği gevent moduna tamamen geçiş yapıyoruz
+socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
-# Veritabanı yolunu sağlama alıyoruz
+# Veritabanı dosyasının yolunu kesinleştiriyoruz
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_FILE = os.path.join(BASE_DIR, 'alichat.db')
 
 # --- VERİTABANI KURULUMU ---
 def init_db():
-    conn = sqlite3.connect(DB_FILE)
-    cursor = conn.cursor()
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Veritabanı başlatma hatası: {e}")
 
 init_db()
 
@@ -59,7 +62,6 @@ def register():
         except sqlite3.IntegrityError:
             return render_template('register.html', error="Bu kullanıcı adı zaten alınmış!")
         except Exception as e:
-            # Sistem kaynaklı başka bir hata olursa ekranda ne olduğunu görebilelim
             return render_template('register.html', error=f"Sistem Hatası: {str(e)}")
             
     return render_template('register.html')
