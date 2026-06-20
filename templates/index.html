@@ -3,66 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AliChat - Modern Media</title>
+    <title>AliChat - Modern Secure</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: '-apple-system', BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: #eef2f7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
+            background-color: #eef2f7; display: flex; justify-content: center; align-items: center; height: 100vh;
         }
         #chat-container {
-            width: 100%;
-            max-width: 440px;
-            height: 85vh;
-            background: #ffffff;
-            border-radius: 20px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            width: 100%; max-width: 440px; height: 85vh; background: #ffffff; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.06); display: flex; flex-direction: column; overflow: hidden;
         }
         #header {
-            background: #ffffff;
-            color: #1e293b;
-            padding: 18px 20px;
-            font-size: 1.2rem;
-            font-weight: 600;
-            border-bottom: 1px solid #f1f5f9;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            background: #ffffff; color: #1e293b; padding: 18px 20px; font-size: 1.2rem; font-weight: 600; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;
         }
+        .header-left { display: flex; align-items: center; gap: 10px; }
         #header .status-dot { width: 9px; height: 9px; background: #10b981; border-radius: 50%; }
-        #messages {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-            background-color: #fafafa;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        
+        /* 🚪 Çıkış Butonu */
+        .logout-btn { color: #ef4444; text-decoration: none; font-size: 0.9rem; font-weight: bold; }
+
+        #messages { flex: 1; padding: 20px; overflow-y: auto; background-color: #fafafa; display: flex; flex-direction: column; gap: 12px; }
         .message-row { display: flex; align-items: flex-end; gap: 10px; max-width: 80%; cursor: pointer; transition: transform 0.1s; }
         .message-row:active { transform: scale(0.98); }
         .my-row { align-self: flex-end; flex-direction: row-reverse; }
         .other-row { align-self: flex-start; }
         
         .avatar {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            color: white;
-            font-weight: 600;
-            font-size: 0.85rem;
-            background-color: #64748b;
+            width: 32px; height: 32px; border-radius: 50%; display: flex; justify-content: center; align-items: center; color: white; font-weight: 600; font-size: 0.85rem; background-color: #64748b;
         }
         .message-content { display: flex; flex-direction: column; }
         .my-row .message-content { align-items: flex-end; }
@@ -78,40 +46,31 @@
         .my-row .reply-container { border-left-color: #fff; color: #e0f2fe; background: rgba(255, 255, 255, 0.15); }
 
         audio { max-width: 100%; margin-top: 4px; border-radius: 8px; }
-        
-        /* 🖼️ Gönderilen Fotoğrafın Stili */
         .chat-image { max-width: 100%; max-height: 200px; border-radius: 12px; margin-top: 4px; display: block; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
 
         #reply-preview-bar { background: #f1f5f9; padding: 8px 16px; border-top: 1px solid #e2e8f0; display: none; justify-content: space-between; align-items: center; font-size: 0.85rem; color: #475569; }
         #cancel-reply-btn { background: none; border: none; color: #ef4444; font-weight: bold; cursor: pointer; font-size: 1rem; }
 
-        #input-area {
-            display: flex;
-            padding: 15px;
-            background: #ffffff;
-            gap: 6px;
-            align-items: center;
-        }
-        #message-input {
-            flex: 1; padding: 12px 18px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 24px; outline: none; font-size: 0.95rem;
-        }
-        #send-btn {
-            background: #0284c7; color: white; border: none; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem;
-        }
+        #input-area { display: flex; padding: 15px; background: #ffffff; gap: 6px; align-items: center; }
+        #message-input { flex: 1; padding: 12px 18px; border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 24px; outline: none; font-size: 0.95rem; }
+        #send-btn { background: #0284c7; color: white; border: none; padding: 12px 18px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem; }
         
         #voice-btn, .file-label {
             background: #e2e8f0; color: #334155; border: none; padding: 12px 13px; border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; justify-content: center;
         }
         #voice-btn.recording { background: #ef4444; color: white; }
-        #image-input { display: none; } /* Gerçek dosya seçiciyi gizliyoruz */
+        #image-input { display: none; }
     </style>
 </head>
 <body>
 
 <div id="chat-container">
     <div id="header">
-        <span class="status-dot"></span>
-        AliChat
+        <div class="header-left">
+            <span class="status-dot"></span>
+            <span>AliChat ({{ username }})</span>
+        </div>
+        <a href="/logout" class="logout-btn">Çıkış Yap 🚪</a>
     </div>
     
     <div id="messages"></div>
@@ -132,10 +91,8 @@
 </div>
 
 <script>
-    let nickname = "";
-    while (!nickname.trim()) {
-        nickname = prompt("AliChat için kullanıcı adı girin:");
-    }
+    // Kullanıcı adını prompt ile değil, doğrudan sunucudan (HTML değişkeni olarak) alıyoruz
+    const nickname = "{{ username }}";
 
     const socket = io();
     const messagesDiv = document.getElementById('messages');
@@ -147,11 +104,8 @@
     const replyPreviewText = document.getElementById('reply-preview-text');
     const cancelReplyBtn = document.getElementById('cancel-reply-btn');
 
-    let mediaRecorder;
-    let audioChunks = [];
-    let isRecording = false;
-    let selectedReplyText = "";
-    let selectedReplySender = "";
+    let mediaRecorder, audioChunks = [], isRecording = false;
+    let selectedReplyText = "", selectedReplySender = "";
 
     const colors = ['#0f172a', '#2563eb', '#16a34a', '#db2777', '#ea580c', '#7c3aed', '#0891b2'];
     function getAvatarColor(name) {
@@ -194,11 +148,9 @@
 
     function setupReplyEvent(rowElement, sender, shortText) {
         rowElement.addEventListener('click', function() {
-            selectedReplySender = sender;
-            selectedReplyText = shortText;
+            selectedReplySender = sender; selectedReplyText = shortText;
             replyPreviewText.textContent = `↩️ ${sender} kullanıcısına yanıt veriliyor: "${shortText}"`;
-            replyPreviewBar.style.display = "flex";
-            messageInput.focus();
+            replyPreviewBar.style.display = "flex"; messageInput.focus();
         });
     }
 
@@ -206,52 +158,31 @@
         selectedReplySender = ""; selectedReplyText = ""; replyPreviewBar.style.display = "none";
     });
 
-    // 1. NORMAL METİN MESAJI ALINDIĞINDA
     socket.on('message', function(data) {
         let sender = "Sistem", text = data, reply = null;
         if (typeof data === 'object') { sender = data.sender; text = data.text; reply = data.reply; }
-        else {
-            const separatorIndex = data.indexOf(':');
-            if (separatorIndex !== -1) { sender = data.substring(0, separatorIndex).trim(); text = data.substring(separatorIndex + 1).trim(); }
-        }
         const build = createMessageRow(sender, reply);
         const textDiv = document.createElement('div');
-        textDiv.classList.add('message-text');
-        textDiv.textContent = text;
+        textDiv.classList.add('message-text'); textDiv.textContent = text;
         build.contentArea.appendChild(textDiv);
-        
         setupReplyEvent(build.rowElement, sender, text.length > 30 ? text.substring(0, 30) + "..." : text);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // 2. SESLİ MESAJ ALINDIĞINDA
     socket.on('audio_message', function(data) {
         const build = createMessageRow(data.sender, data.reply);
-        const textDiv = document.createElement('div');
-        textDiv.classList.add('message-text');
-        const audio = document.createElement('audio');
-        audio.src = data.audio; audio.controls = true;
-        textDiv.appendChild(audio);
-        build.contentArea.appendChild(textDiv);
-        
+        const textDiv = document.createElement('div'); textDiv.classList.add('message-text');
+        const audio = document.createElement('audio'); audio.src = data.audio; audio.controls = true;
+        textDiv.appendChild(audio); build.contentArea.appendChild(textDiv);
         setupReplyEvent(build.rowElement, data.sender, "🎵 Ses Kaydı");
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
 
-    // 3. 🖼️ FOTOĞRAF MESAJI ALINDIĞINDA
     socket.on('image_message', function(data) {
         const build = createMessageRow(data.sender, data.reply);
-        const textDiv = document.createElement('div');
-        textDiv.classList.add('message-text');
-        
-        // Fotoğraf elementi oluşturuluyor
-        const img = document.createElement('img');
-        img.src = data.image;
-        img.classList.add('chat-image');
-        
-        textDiv.appendChild(img);
-        build.contentArea.appendChild(textDiv);
-        
+        const textDiv = document.createElement('div'); textDiv.classList.add('message-text');
+        const img = document.createElement('img'); img.src = data.image; img.classList.add('chat-image');
+        textDiv.appendChild(img); build.contentArea.appendChild(textDiv);
         setupReplyEvent(build.rowElement, data.sender, "🖼️ Fotoğraf");
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
     });
@@ -270,27 +201,21 @@
     sendBtn.addEventListener('click', sendMessage);
     messageInput.addEventListener('keypress', function(e) { if (e.key === 'Enter') sendMessage(); });
 
-    // --- 🖼️ FOTOĞRAF GÖNDERME MANTIĞI ---
     imageInput.addEventListener('change', function() {
         const file = this.files[0];
         if (file) {
-            const reader = new FileReader();
-            reader.readAsDataURL(file); // Fotoğrafı Base64 formatına çevirir
+            const reader = new FileReader(); reader.readAsDataURL(file);
             reader.onloadend = function() {
-                const base64Image = reader.result;
-                // Fotoğraf verisini sunucuya gönderiyoruz
                 socket.emit('image_message', {
-                    sender: nickname,
-                    image: base64Image,
+                    sender: nickname, image: reader.result,
                     reply: selectedReplyText ? { sender: selectedReplySender, text: selectedReplyText } : null
                 });
                 cancelReplyBtn.click();
             }
-            this.value = ""; // Aynı fotoğrafı tekrar seçebilmek için inputu sıfırla
+            this.value = "";
         }
     });
 
-    // --- SES KAYIT MANTIĞI ---
     voiceBtn.addEventListener('click', async function() {
         if (!isRecording) {
             if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -318,6 +243,5 @@
         }
     });
 </script>
-
 </body>
 </html>
