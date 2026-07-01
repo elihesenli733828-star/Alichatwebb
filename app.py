@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'alichat_gizli_anahtar'
 
-# Render'ın beklediği gevent moduna tamamen geçiş yapıyoruz
+# Render'ın gunicorn -k geventwebsocket komutuyla tam uyumlu gevent modu
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='gevent')
 
 # Veritabanı dosyasının yolunu kesinleştiriyoruz
@@ -33,7 +33,7 @@ def init_db():
 
 init_db()
 
-# --- SAYFA YÖNLENDİRMELERİ ---
+# --- SAYFA YÖNLENDİRMELERİ (ROTALAR) ---
 
 @app.route('/')
 def index():
@@ -94,7 +94,7 @@ def logout():
     session.pop('username', None)
     return redirect(url_for('login'))
 
-# --- SOHBET OLAYLARI ---
+# --- SOHBET OLAYLARI (METİN, SES, FOTOĞRAF) ---
 
 @socketio.on('message')
 def handle_message(msg):
