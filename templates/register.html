@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AliChat - Kayıt Ol</title>
+    <style>
+        body { font-family: '-apple-system', sans-serif; background-color: #eef2f7; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .auth-container { background: white; padding: 30px; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); width: 100%; max-width: 360px; text-align: center; }
+        h2 { color: #1e293b; margin-bottom: 20px; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #e2e8f0; border-radius: 8px; outline: none; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: #0284c7; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        button:hover { background: #0369a1; }
+        .error { color: #ef4444; font-size: 0.9rem; margin-top: 10px; }
+        .link { margin-top: 15px; font-size: 0.85rem; color: #64748b; }
+        .link a { color: #0284c7; text-decoration: none; font-weight: bold; }
+    </style>
+</head>
+<body>
+<div class="auth-container">
+    <h2>Hesap Oluştur</h2>
+    <form method="POST">
+        <input type="text" name="username" placeholder="Kullanıcı Adı" required autocomplete="off">
+        <input type="password" name="password" placeholder="Şifre" required>
+        <button type="submit">Kayıt Ol</button>
+    </form>
+    {% if error %} <div class="error">{{ error }}</div> {% endif %}
+    <div class="link">Zaten hesabınız var mı? <a href="/login">Giriş Yap</a></div>
+</div>
+</body>
+</html>
