@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AliChat - Yönetim Paneli</title>
+    <style>
+        body { font-family: '-apple-system', sans-serif; background: #f4f6f9; padding: 30px; color: #333; }
+        .container { max-width: 800px; background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin: 0 auto; }
+        h2 { color: #1e293b; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .back-btn { font-size: 0.9rem; background: #64748b; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; color: #64748b; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .badge-user { background: #e0f2fe; color: #0369a1; }
+        .badge-admin { background: #fef3c7; color: #d97706; }
+        .badge-banned { background: #fee2e2; color: #b91c1c; }
+        .btn { padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 0.85rem; font-weight: bold; }
+        .btn-ban { background: #ef4444; color: white; }
+        .btn-unban { background: #10b981; color: white; }
+        .disabled { background: #cbd5e1; color: #94a3b8; cursor: not-allowed; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>
+        🛡️ AliChat Admin Kontrol Paneli
+        <a href="/" class="back-btn">Sohbete Dön 💬</a>
+    </h2>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Kullanıcı Adı</th>
+                <th>Şifre Durumu</th>
+                <th>Rolü</th>
+                <th>İşlem</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[0] }}</td>
+                <td><strong>{{ user[1] }}</strong></td>
+                <td><span style="color:#94a3b8; font-family: monospace;">[🔒 HASHED/GÜVENLİ]</span></td>
+                <td>
+                    {% if user[3] == 1 %}
+                        <span class="badge badge-admin">Admin</span>
+                    {% elif user[2] == 1 %}
+                        <span class="badge badge-banned">Yasaklı</span>
+                    {% else %}
+                        <span class="badge badge-user">Kullanıcı</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if user[3] == 1 %}
+                        <span class="btn disabled">İşlem Yapılamaz</span>
+                    {% else %}
+                        {% if user[2] == 1 %}
+                            <a href="/admin/unban/{{ user[0] }}" class="btn btn-unban">Banı Kaldır 🔓</a>
+                        {% else %}
+                            <a href="/admin/ban/{{ user[0] }}" class="btn btn-ban">Banla 🔨</a>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+</body>
+</html>
